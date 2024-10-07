@@ -108,7 +108,7 @@
 
       function updateCursor(cursorData) {
         const { username, position } = cursorData;
-        if (username !== 'client2') { // Ignore the current user's cursor
+        if (username !== 'client1') { // Ignore the current user's cursor
           showUserCursor(username, position);
         }
       }
@@ -152,7 +152,7 @@
     // Remove the label after 1 second
     setTimeout(() => {
       document.body.removeChild(label);
-    }, 100);
+    }, 200000);
   }
 }
 
