@@ -38,7 +38,7 @@
   <script src="https://cdn.jsdelivr.net/npm/monaco-editor/min/vs/loader.js"></script>
   <script>
     // WebSocket connection to the backend server
-    const username = "client1"
+    const username = "client2"
     const socket = new WebSocket('ws://localhost:8080');
     
     let editor, cursorDecorations = {};
@@ -91,12 +91,16 @@
 
       // Receive updates from the server
       socket.onmessage = (event) => {
-        const message = JSON.parse(event.data);
-        if (message.type === 'code') {
-          processUpdatedCode(message.data);
-        } else if (message.type === 'cursor') {
-          updateCursor(message.data);
-        }
+        const reader = new FileReader();
+        reader.onload = () => {
+          const message = JSON.parse(reader.result);
+          if (message.type === 'code') {
+            processUpdatedCode(message.data);
+          } if (message.type === 'cursor') {
+            updateCursor(message.data);
+          }
+        };
+        reader.readAsText(event.data); // Read the Blob as text
       };
 
       function processUpdatedCode(updatedCode) {
@@ -108,53 +112,54 @@
 
       function updateCursor(cursorData) {
         const { username, position } = cursorData;
-        if (username !== 'client1') { // Ignore the current user's cursor
+        if (username !== 'client2') { // Ignore the current user's cursor
           showUserCursor(username, position);
         }
       }
 
       function showUserCursor(username, position) {
-  const range = new monaco.Range(position.lineNumber, position.column, position.lineNumber, position.column);
-  const options = {
-    className: `user-cursor`, // Style for the other user's cursor
-    stickiness: 1 // Make sure it stays at the cursor position
-  };
+        const range = new monaco.Range(position.lineNumber, position.column, position.lineNumber, position.column);
+        const options = {
+          className: `user-cursor`, // Style for the other user's cursor
+          stickiness: 1 // Make sure it stays at the cursor position
+        };
 
-  // Remove previous cursor decorations for this user
-  if (cursorDecorations[username]) {
-    editor.deltaDecorations(cursorDecorations[username], []);
-  }
+        // Update or create cursor decorations for this user
+        if (cursorDecorations[username]) {
+          // Update the existing decoration
+          editor.deltaDecorations(cursorDecorations[username], [{
+            range,
+            options
+          }]);
+        } else {
+          // Create a new decoration
+          cursorDecorations[username] = editor.deltaDecorations([], [{
+            range,
+            options
+          }]);
+        }
 
-  // Apply new decorations for the cursor
-  cursorDecorations[username] = editor.deltaDecorations([], [{
-    range,
-    options
-  }]);
+        // Get the pixel position of the cursor
+        const cursorCoords = editor.getScrolledVisiblePosition({ lineNumber: position.lineNumber, column: position.column });
+        
+        if (cursorCoords) {
+          // Create or update a label with the username
+          let label = document.querySelector(`.username-label[data-username="${username}"]`);
+          if (!label) {
+            label = document.createElement('div');
+            label.className = 'username-label';
+            label.dataset.username = username;
+            document.body.appendChild(label);
+          }
+          label.textContent = username;
 
-  // Get the pixel position of the cursor
-  const cursorCoords = editor.getScrolledVisiblePosition({ lineNumber: position.lineNumber, column: position.column });
-  
-  if (cursorCoords) {
-    // Create a label with the username
-    const label = document.createElement('div');
-    label.className = 'username-label';
-    label.textContent = username;
+          const labelOffset = 100;
 
-    const labelOffset = 100;
-
-    // Set label position based on editor's cursor coordinates
-    label.style.left = `${cursorCoords.left}px`;
-    label.style.top = `${cursorCoords.top + labelOffset}px`;
-
-    // Add the label to the editor container
-    document.body.appendChild(label);
-
-    // Remove the label after 1 second
-    setTimeout(() => {
-      document.body.removeChild(label);
-    }, 200000);
-  }
-}
+          // Set label position based on editor's cursor coordinates
+          label.style.left = `${cursorCoords.left}px`;
+          label.style.top = `${cursorCoords.top + labelOffset}px`;
+        }
+      }
 
     });
   </script>
