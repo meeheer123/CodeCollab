@@ -12,7 +12,6 @@
       border: 1px solid #ddd;
     }
 
-    /* Styling the other user's cursor */
     .user-cursor {
       position: absolute;
       width: 2px;
@@ -37,13 +36,143 @@
 
   <script src="https://cdn.jsdelivr.net/npm/monaco-editor/min/vs/loader.js"></script>
   <script>
-    // WebSocket connection to the backend server
-    const username = "client2"
+    const username = "client" + Math.floor(Math.random() * 1000); // Generate a random client username
+    const clientId = Math.random().toString(36).substr(2, 9); // Unique client ID for each client
+
     const socket = new WebSocket('ws://localhost:8080');
     
-    let editor, cursorDecorations = {};
+    let editor;
+    let cursorDecorations = {};
+    let isRemoteUpdate = false; // Flag to track whether the change is from a remote client
 
-    // Add event listeners for WebSocket connection
+    // Setup Monaco Editor
+    require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor/min/vs' }});
+    require(['vs/editor/editor.main'], function () {
+      editor = monaco.editor.create(document.getElementById('editor'), {
+        value: "// Start typing your code here...\n",
+        language: 'javascript',
+        theme: 'vs-dark'
+      });
+
+      // Listen for changes and send deltas to WebSocket server
+      editor.onDidChangeModelContent((event) => {
+        if (isRemoteUpdate) {
+          return; // Prevent sending the change if it's a remote update
+        }
+        
+        const changes = event.changes;
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({
+            type: 'delta',
+            data: {
+              changes: changes,
+              username: username,
+              clientId: clientId // Include the client ID
+            }
+          }));
+        }
+      });
+
+      // Send cursor position updates to the server
+      editor.onDidChangeCursorPosition((e) => {
+        if (isRemoteUpdate) {
+          return; // Ignore cursor changes from remote updates
+        }
+
+        const position = editor.getPosition();
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({
+            type: 'cursor',
+            data: {
+              username: username,
+              position: position,
+              clientId: clientId // Include the client ID
+            }
+          }));
+        }
+      });
+
+      // Handle incoming WebSocket messages (deltas or cursor updates)
+      socket.onmessage = (event) => {
+        if (event.data instanceof Blob) {
+          const reader = new FileReader();
+          reader.onload = () => {
+            try {
+              const message = JSON.parse(reader.result);
+
+              // Ignore messages from the same client
+              if (message.data.clientId === clientId) {
+                return;
+              }
+
+              console.log("Received from WebSocket:", message);
+
+              if (message.type === 'delta') {
+                isRemoteUpdate = true; // Set the flag to true before applying remote changes
+                applyDeltas(message.data.changes);
+                isRemoteUpdate = false; // Reset the flag after the changes have been applied
+              } else if (message.type === 'cursor') {
+                updateCursor(message.data);
+              }
+            } catch (error) {
+              console.error('Error parsing WebSocket message:', error);
+            }
+          };
+          reader.readAsText(event.data);
+        }
+      };
+
+      function applyDeltas(changes) {
+        // Use Monaco's executeEdits to apply changes
+        editor.executeEdits(null, changes.map(change => ({
+          range: new monaco.Range(
+            change.range.startLineNumber, change.range.startColumn,
+            change.range.endLineNumber, change.range.endColumn
+          ),
+          text: change.text,
+          forceMoveMarkers: change.forceMoveMarkers
+        })));
+      }
+
+      function updateCursor(cursorData) {
+        const { username, position } = cursorData;
+        if (username !== clientId) { // Ignore the current user's cursor
+          showUserCursor(username, position);
+        }
+      }
+
+      function showUserCursor(username, position) {
+        const range = new monaco.Range(position.lineNumber, position.column, position.lineNumber, position.column);
+        const options = {
+          className: `user-cursor`,
+          stickiness: 1
+        };
+
+        if (cursorDecorations[username]) {
+          editor.deltaDecorations(cursorDecorations[username], [{ range, options }]);
+        } else {
+          cursorDecorations[username] = editor.deltaDecorations([], [{ range, options }]);
+        }
+
+        const cursorCoords = editor.getScrolledVisiblePosition({ lineNumber: position.lineNumber, column: position.column });
+        if (cursorCoords) {
+          let label = document.querySelector(`.username-label[data-username="${username}"]`);
+          if (!label) {
+            label = document.createElement('div');
+            label.className = 'username-label';
+            label.dataset.username = username;
+            document.body.appendChild(label);
+          }
+          label.textContent = username;
+
+          const labelOffset = 100;
+          label.style.left = `${cursorCoords.left}px`;
+          label.style.top = `${cursorCoords.top + labelOffset}px`;
+        }
+      }
+    });
+
+    // WebSocket event handlers
     socket.onopen = () => {
       console.log('WebSocket connection established');
     };
@@ -55,113 +184,6 @@
     socket.onclose = () => {
       console.log('WebSocket connection closed');
     };
-
-    // Initialize Monaco Editor
-    require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor/min/vs' }});
-    require(['vs/editor/editor.main'], function () {
-      editor = monaco.editor.create(document.getElementById('editor'), {
-        value: "// Start typing your code here...\n",
-        language: 'javascript',
-        theme: 'vs-dark'
-      });
-
-      // Send code updates to the server when content changes
-      editor.onDidChangeModelContent(() => {
-        const code = editor.getValue();
-        if (socket.readyState === WebSocket.OPEN) {
-          socket.send(JSON.stringify({ type: 'code', data: code })); // Send the updated code to WebSocket server
-        } else {
-          console.warn('WebSocket is not open. Unable to send code.');
-        }
-      });
-
-      // Send cursor position updates
-      editor.onDidChangeCursorPosition((e) => {
-        const position = editor.getPosition();
-        if (socket.readyState === WebSocket.OPEN) {
-          socket.send(JSON.stringify({
-            type: 'cursor',
-            data: {
-              username: username, // Current user's cursor
-              position
-            }
-          }));
-        }
-      });
-
-      // Receive updates from the server
-      socket.onmessage = (event) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const message = JSON.parse(reader.result);
-          if (message.type === 'code') {
-            processUpdatedCode(message.data);
-          } if (message.type === 'cursor') {
-            updateCursor(message.data);
-          }
-        };
-        reader.readAsText(event.data); // Read the Blob as text
-      };
-
-      function processUpdatedCode(updatedCode) {
-        if (updatedCode !== editor.getValue()) {
-          console.log('Updating editor with new code');
-          editor.setValue(updatedCode);
-        }
-      }
-
-      function updateCursor(cursorData) {
-        const { username, position } = cursorData;
-        if (username !== 'client2') { // Ignore the current user's cursor
-          showUserCursor(username, position);
-        }
-      }
-
-      function showUserCursor(username, position) {
-        const range = new monaco.Range(position.lineNumber, position.column, position.lineNumber, position.column);
-        const options = {
-          className: `user-cursor`, // Style for the other user's cursor
-          stickiness: 1 // Make sure it stays at the cursor position
-        };
-
-        // Update or create cursor decorations for this user
-        if (cursorDecorations[username]) {
-          // Update the existing decoration
-          editor.deltaDecorations(cursorDecorations[username], [{
-            range,
-            options
-          }]);
-        } else {
-          // Create a new decoration
-          cursorDecorations[username] = editor.deltaDecorations([], [{
-            range,
-            options
-          }]);
-        }
-
-        // Get the pixel position of the cursor
-        const cursorCoords = editor.getScrolledVisiblePosition({ lineNumber: position.lineNumber, column: position.column });
-        
-        if (cursorCoords) {
-          // Create or update a label with the username
-          let label = document.querySelector(`.username-label[data-username="${username}"]`);
-          if (!label) {
-            label = document.createElement('div');
-            label.className = 'username-label';
-            label.dataset.username = username;
-            document.body.appendChild(label);
-          }
-          label.textContent = username;
-
-          const labelOffset = 100;
-
-          // Set label position based on editor's cursor coordinates
-          label.style.left = `${cursorCoords.left}px`;
-          label.style.top = `${cursorCoords.top + labelOffset}px`;
-        }
-      }
-
-    });
   </script>
 </body>
 </html>

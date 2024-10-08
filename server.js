@@ -6,7 +6,9 @@ wss.on('connection', (ws) => {
   console.log('Client connected');
 
   ws.on('message', (message) => {
-    // Broadcast the message to all connected clients
+    console.log(`Received: ${message}`);
+
+    // Broadcast the message (delta and cursor position) to all connected clients except the sender
     wss.clients.forEach((client) => {
       if (client !== ws && client.readyState === WebSocket.OPEN) {
         client.send(message);
