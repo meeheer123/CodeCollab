@@ -1,354 +1,399 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CodeCollab - Collaborative Code Editor</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/monaco-editor/min/vs/editor/editor.main.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
-  <style>
-    /* Existing CSS styles remain the same */
-    :root {
-      --primary-color: #3498db;
-      --secondary-color: #2ecc71;
-      --background-color: #f8f9fa;
-      --text-color: #333;
-      --border-color: #e0e0e0;
-      --output-bg-color: #2d3748;
-      --output-text-color: #e2e8f0;
-    }
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: 'Inter', sans-serif;
-      background-color: var(--background-color);
-      color: var(--text-color);
-    }
-    .container {
-      display: flex;
-      height: calc(100vh - 60px);
-    }
-    #editor {
-      width: 60%;
-      height: 100%;
-      border-right: 1px solid var(--border-color);
-    }
-    .right-panel {
-      width: 40%;
-      display: flex;
-      flex-direction: column;
-    }
-    #video-placeholder {
-      height: 30%;
-      background-color: #ffffff;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      border-bottom: 1px solid var(--border-color);
-      font-weight: 500;
-      color: #888;
-    }
-    .output-section {
-      height: 70%;
-      display: flex;
-      flex-direction: column;
-      background-color: var(--output-bg-color);
-    }
-    .control-panel {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px;
-      background-color: #1a202c;
-      border-bottom: 1px solid #4a5568;
-    }
-    #language-select {
-      padding: 5px 10px;
-      border-radius: 4px;
-      border: 1px solid var(--border-color);
-      background-color: #2d3748;
-      color: var(--output-text-color);
-      font-family: 'Inter', sans-serif;
-    }
-    #run-button {
-      padding: 8px 16px;
-      background-color: var(--secondary-color);
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: 600;
-      transition: background-color 0.3s ease;
-    }
-    #run-button:hover {
-      background-color: #27ae60;
-    }
-    .input-output-container {
-      display: flex;
-      flex-direction: column;
-      flex-grow: 1;
-      overflow: hidden;
-    }
-    #custom-input, #output {
-      flex-grow: 1;
-      padding: 10px;
-      font-family: 'Fira Code', monospace;
-      font-size: 14px;
-      line-height: 1.6;
-      color: var(--output-text-color);
-      background-color: var(--output-bg-color);
-      border: none;
-      resize: none;
-    }
-    #custom-input {
-      border-bottom: 1px solid #4a5568;
-    }
-    .output-header, .input-header {
-      background-color: #1a202c;
-      color: var(--output-text-color);
-      padding: 5px 10px;
-      font-weight: 500;
-      font-size: 14px;
-      border-bottom: 1px solid #4a5568;
-    }
-    .user-cursor {
-      position: absolute;
-      width: 2px;
-      background-color: var(--primary-color);
-      z-index: 100;
-    }
-    .username-label {
-      position: absolute;
-      background-color: var(--primary-color);
-      color: white;
-      padding: 2px 5px;
-      font-size: 12px;
-      border-radius: 3px;
-      z-index: 101;
-    }
-    .header {
-      background-color: #ffffff;
-      padding: 10px 20px;
-      border-bottom: 1px solid var(--border-color);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      height: 40px;
-    }
-    .logo {
-      font-size: 24px;
-      font-weight: 600;
-      color: var(--primary-color);
-    }
-    .user-info {
-      font-size: 14px;
-      color: #888;
-    }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <div class="logo">CodeCollab</div>
-    <div class="user-info">Connected as: <span id="username"></span></div>
-  </div>
-  <div class="container">
-    <div id="editor"></div>
-    <div class="right-panel">
-      <div id="video-placeholder">Video collaboration coming soon</div>
-      <div class="output-section">
-        <div class="control-panel">
-          <select id="language-select">
-            <option value="javascript">JavaScript</option>
-            <option value="python">Python</option>
-            <option value="java">Java</option>
-            <option value="cpp">C++</option>
-          </select>
-          <button id="run-button">Run Code</button>
-        </div>
-        <div class="input-output-container">
-          <div class="input-header">Custom Input</div>
-          <textarea id="custom-input" placeholder="Enter custom input here..."></textarea>
-          <div class="output-header">Output</div>
-          <div id="output"></div>
-        </div>
+   <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>CodeCollab - Collaborative Code Editor</title>
+      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/monaco-editor/min/vs/editor/editor.main.css">
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+      <style>
+         :root {
+         --primary-color: #3498db;
+         --secondary-color: #2ecc71;
+         --background-color: #f8f9fa;
+         --text-color: #333;
+         --border-color: #e0e0e0;
+         --output-bg-color: #2d3748;
+         --output-text-color: #e2e8f0;
+         }
+         body {
+         margin: 0;
+         padding: 0;
+         font-family: 'Inter', sans-serif;
+         background-color: var(--background-color);
+         color: var(--text-color);
+         }
+         .container {
+         display: flex;
+         flex-direction: row;
+         height: calc(100vh - 60px);
+         }
+         #editor {
+         width: 60%;
+         height: 100%;
+         border-right: 1px solid var(--border-color);
+         }
+         .right-panel {
+         width: 40%;
+         display: flex;
+         flex-direction: column;
+         }
+         #video-placeholder {
+         height: 30%;
+         background-color: #ffffff;
+         display: flex;
+         justify-content: center;
+         align-items: center;
+         border-bottom: 1px solid var(--border-color);
+         font-weight: 500;
+         color: #888;
+         }
+         .output-section {
+         height: 70%;
+         display: flex;
+         flex-direction: column;
+         background-color: var(--output-bg-color);
+         }
+         .control-panel {
+         display: flex;
+         justify-content: space-between;
+         align-items: center;
+         padding: 10px;
+         background-color: #1a202c;
+         border-bottom: 1px solid #4a5568;
+         }
+         #language-select {
+         padding: 5px 10px;
+         border-radius: 4px;
+         border: 1px solid var(--border-color);
+         background-color: #2d3748;
+         color: var(--output-text-color);
+         font-family: 'Inter', sans-serif;
+         }
+         #run-button {
+         padding: 8px 16px;
+         background-color: var(--secondary-color);
+         color: white;
+         border: none;
+         border-radius: 4px;
+         cursor: pointer;
+         font-size: 14px;
+         font-weight: 600;
+         transition: background-color 0.3s ease;
+         }
+         #run-button:hover {
+         background-color: #27ae60;
+         }
+         .input-output-container {
+         display: flex;
+         flex-direction: column;
+         flex-grow: 1;
+         overflow: hidden;
+         }
+         #custom-input, #output {
+         flex-grow: 1;
+         padding: 10px;
+         font-family: 'Fira Code', monospace;
+         font-size: 14px;
+         line-height: 1.6;
+         color: var(--output-text-color);
+         background-color: var(--output-bg-color);
+         border: none;
+         resize: none;
+         }
+         #custom-input {
+         border-bottom: 1px solid #4a5568;
+         }
+         .output-header, .input-header {
+         background-color: #1a202c;
+         color: var(--output-text-color);
+         padding: 5px 10px;
+         font-weight: 500;
+         font-size: 14px;
+         border-bottom: 1px solid #4a5568;
+         }
+         .header {
+         background-color: #ffffff;
+         padding: 10px 20px;
+         border-bottom: 1px solid var(--border-color);
+         display: flex;
+         justify-content: space-between;
+         align-items: center;
+         height: 40px;
+         }
+         .logo {
+         font-size: 24px;
+         font-weight: 600;
+         color: var(--primary-color);
+         }
+         .user-info {
+         font-size: 14px;
+         color: #888;
+         }
+         /* Media queries for responsiveness */
+         @media (max-width: 1024px) {
+         .container {
+         flex-direction: column;
+         }
+         #editor {
+         width: 100%;
+         height: 50vh;
+         border-right: none;
+         }
+         .right-panel {
+         width: 100%;
+         height: 50vh;
+         }
+         }
+         @media (max-width: 768px) {
+         .header {
+         flex-direction: column;
+         align-items: flex-start;
+         }
+         .container {
+         height: auto;
+         }
+         #video-placeholder {
+         display: none;
+         }
+         .output-section {
+         height: auto;
+         }
+         .control-panel {
+         flex-direction: column;
+         align-items: flex-start;
+         }
+         #run-button {
+         width: 100%;
+         margin-top: 10px;
+         }
+         }
+         @media (max-width: 480px) {
+         .header {
+         padding: 10px;
+         }
+         .logo {
+         font-size: 20px;
+         }
+         #run-button {
+         font-size: 12px;
+         padding: 6px 12px;
+         }
+         #language-select {
+         font-size: 12px;
+         padding: 5px;
+         }
+         #custom-input, #output {
+         font-size: 12px;
+         padding: 5px;
+         }
+         .input-output-container {
+         overflow-y: auto;
+         }
+         }
+      </style>
+   </head>
+   <body>
+      <div class="header">
+         <div class="logo">CodeCollab</div>
+         <div class="user-info">Connected as: <span id="username"></span></div>
       </div>
-    </div>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/monaco-editor/min/vs/loader.js"></script>
-  <script>
-    const username = "user" + Math.floor(Math.random() * 1000);
-    document.getElementById('username').textContent = username;
-
-    const clientId = Math.random().toString(36).substr(2, 9);
-
-    // Get the room ID from the URL query parameter or default to 'default'
-    const urlParams = new URLSearchParams(window.location.search);
-    const roomId = urlParams.get('room') || 'default';
-
-    // Establish WebSocket connection with room
-    const socket = new WebSocket(`wss://spectrum-working-surf.glitch.me/?room=${roomId}`);
-    
-    let editor;
-    let cursorDecorations = {};
-    let isRemoteUpdate = false;
-
-    require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor/min/vs' }});
-    require(['vs/editor/editor.main'], function () {
-      editor = monaco.editor.create(document.getElementById('editor'), {
-        value: "// Start coding here...\n",
-        language: 'javascript',
-        theme: 'vs-dark',
-        fontSize: 14,
-        minimap: { enabled: false }
-      });
-
-      editor.onDidChangeModelContent((event) => {
-        if (isRemoteUpdate) return;
-        
-        const changes = event.changes;
-        if (socket.readyState === WebSocket.OPEN) {
-          socket.send(JSON.stringify({
-            type: 'delta',
-            data: { changes, username, clientId }
-          }));
-        }
-      });
-
-      editor.onDidChangeCursorPosition((e) => {
-        if (isRemoteUpdate) return;
-
-        const position = editor.getPosition();
-        if (socket.readyState === WebSocket.OPEN) {
-          socket.send(JSON.stringify({
-            type: 'cursor',
-            data: { username, position, clientId }
-          }));
-        }
-      });
-
-      socket.onmessage = (event) => {
-        if (event.data instanceof Blob) {
-          // Read Blob data
-          const reader = new FileReader();
-          reader.onload = function() {
-            const message = JSON.parse(reader.result);
-
-            // Check if the message is not from the current client
-            if (message.data.clientId === clientId) return;
-
-            if (message.type === 'delta') {
-              isRemoteUpdate = true;
-              applyDeltas(message.data.changes);
-              isRemoteUpdate = false;
-            } else if (message.type === 'cursor') {
-              updateCursor(message.data);
-            } else if (message.type === 'run-output') {
-              displayOutput(message.data.output);
-            }
-          };
-          reader.readAsText(event.data);
-        }
-      };
-
-      function applyDeltas(changes) {
-        editor.executeEdits(null, changes.map(change => ({
-          range: new monaco.Range(
-            change.range.startLineNumber, change.range.startColumn,
-            change.range.endLineNumber, change.range.endColumn
-          ),
-          text: change.text,
-          forceMoveMarkers: change.forceMoveMarkers
-        })));
-      }
-
-      function updateCursor(cursorData) {
-        const { username, position } = cursorData;
-        showUserCursor(username, position);
-      }
-
-      function showUserCursor(username, position) {
-        const range = new monaco.Range(position.lineNumber, position.column, position.lineNumber, position.column);
-        const options = {
-          className: `user-cursor`,
-          stickiness: 1
-        };
-
-        if (cursorDecorations[username]) {
-          cursorDecorations[username] = editor.deltaDecorations(cursorDecorations[username], [{ range, options }]);
-        } else {
-          cursorDecorations[username] = editor.deltaDecorations([], [{ range, options }]);
-        }
-
-        const cursorCoords = editor.getScrolledVisiblePosition({ lineNumber: position.lineNumber, column: position.column });
-        if (cursorCoords) {
-          let label = document.querySelector(`.username-label[data-username="${username}"]`);
-          if (!label) {
-            label = document.createElement('div');
-            label.className = 'username-label';
-            label.dataset.username = username;
-            document.body.appendChild(label);
-          }
-          label.textContent = username;
-
-          const labelOffset = 20;
-          label.style.left = `${cursorCoords.left}px`;
-          label.style.top = `${cursorCoords.top + labelOffset}px`;
-        }
-      }
-    });
-
-    socket.onopen = () => console.log('WebSocket connection established');
-    socket.onerror = (error) => console.error('WebSocket error:', error);
-    socket.onclose = () => console.log('WebSocket connection closed');
-
-    document.getElementById('run-button').addEventListener('click', () => {
-      const code = editor.getValue();
-      const language = document.getElementById('language-select').value;
-      const input = document.getElementById('custom-input').value;
-
-      runCodeWithPistonAPI(code, language, input)
-        .then(output => {
-          if (socket.readyState === WebSocket.OPEN) {
-            socket.send(JSON.stringify({
-              type: 'run-output',
-              data: { output, username, clientId }
-            }));
-          }
-          displayOutput(output);
-        })
-        .catch(error => {
-          console.error("Error running code:", error);
-          displayOutput({ output: error.toString() });
-        });
-    });
-
-    async function runCodeWithPistonAPI(code, language, input) {
-      const response = await fetch('https://emkc.org/api/v2/piston/execute', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          language: language,
-          files: code,
-          stdin: input,
-          version: "*"
-        })
-      });
-
-      const result = await response.json();
-      return result.run ? result.run : { output: 'No output or error occurred.' };
-    }
-
-    function displayOutput(output) {
-      const outputElement = document.getElementById('output');
-      outputElement.textContent = output.output || 'No output';
-      outputElement.innerHTML = outputElement.innerHTML.replace(/\n/g, '<br>');
-    }
-
-    document.getElementById('language-select').addEventListener('change', (event) => {
-      monaco.editor.setModelLanguage(editor.getModel(), event.target.value);
-    });
-  </script>
-</body>
+      <div class="container">
+         <div id="editor"></div>
+         <div class="right-panel">
+            <div id="video-placeholder">Video collaboration coming soon</div>
+            <div class="output-section">
+               <div class="control-panel">
+                  <select id="language-select">
+                     <option value="javascript">JavaScript</option>
+                     <option value="python">Python</option>
+                     <option value="java">Java</option>
+                     <option value="cpp">C++</option>
+                  </select>
+                  <button id="run-button">Run Code</button>
+               </div>
+               <div class="input-output-container">
+                  <div class="input-header">Custom Input</div>
+                  <textarea id="custom-input" placeholder="Enter custom input here..."></textarea>
+                  <div class="output-header">Output</div>
+                  <div id="output"></div>
+               </div>
+            </div>
+         </div>
+      </div>
+      <script src="https://cdn.jsdelivr.net/npm/monaco-editor/min/vs/loader.js"></script>
+      <script>
+         const username = "user" + Math.floor(Math.random() * 1000);
+         document.getElementById('username').textContent = username;
+         
+         const clientId = Math.random().toString(36).substr(2, 9);
+         
+         // Get the room ID from the URL query parameter or default to 'default'
+         const urlParams = new URLSearchParams(window.location.search);
+         const roomId = urlParams.get('room') || 'default';
+         
+         // Establish WebSocket connection with room
+         const socket = new WebSocket(`wss://spectrum-working-surf.glitch.me/?room=${roomId}`);
+         
+         let editor;
+         let cursorDecorations = {};
+         let isRemoteUpdate = false;
+         
+         require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor/min/vs' }});
+         require(['vs/editor/editor.main'], function () {
+           editor = monaco.editor.create(document.getElementById('editor'), {
+             value: "// Start coding here...\n",
+             language: 'javascript',
+             theme: 'vs-dark',
+             fontSize: 14,
+             minimap: { enabled: false }
+           });
+         
+           editor.onDidChangeModelContent((event) => {
+             if (isRemoteUpdate) return;
+             
+             const changes = event.changes;
+             if (socket.readyState === WebSocket.OPEN) {
+               socket.send(JSON.stringify({
+                 type: 'delta',
+                 data: { changes, username, clientId }
+               }));
+             }
+           });
+         
+           editor.onDidChangeCursorPosition((e) => {
+             if (isRemoteUpdate) return;
+         
+             const position = editor.getPosition();
+             if (socket.readyState === WebSocket.OPEN) {
+               socket.send(JSON.stringify({
+                 type: 'cursor',
+                 data: { username, position, clientId }
+               }));
+             }
+           });
+         
+           socket.onmessage = (event) => {
+             if (event.data instanceof Blob) {
+               // Read Blob data
+               const reader = new FileReader();
+               reader.onload = function() {
+                 const message = JSON.parse(reader.result);
+         
+                 // Check if the message is not from the current client
+                 if (message.data.clientId === clientId) return;
+         
+                 if (message.type === 'delta') {
+                   isRemoteUpdate = true;
+                   applyDeltas(message.data.changes);
+                   isRemoteUpdate = false;
+                 } else if (message.type === 'cursor') {
+                   updateCursor(message.data);
+                 } else if (message.type === 'run-output') {
+                   displayOutput(message.data.output);
+                 }
+               };
+               reader.readAsText(event.data);
+             }
+           };
+         
+           function applyDeltas(changes) {
+             editor.executeEdits(null, changes.map(change => ({
+               range: new monaco.Range(
+                 change.range.startLineNumber, change.range.startColumn,
+                 change.range.endLineNumber, change.range.endColumn
+               ),
+               text: change.text,
+               forceMoveMarkers: change.forceMoveMarkers
+             })));
+           }
+         
+           function updateCursor(cursorData) {
+             const { username, position } = cursorData;
+             showUserCursor(username, position);
+           }
+         
+           function showUserCursor(username, position) {
+             const range = new monaco.Range(position.lineNumber, position.column, position.lineNumber, position.column);
+             const options = {
+               className: `user-cursor`,
+               stickiness: 1
+             };
+         
+             if (cursorDecorations[username]) {
+               cursorDecorations[username] = editor.deltaDecorations(cursorDecorations[username], [{ range, options }]);
+             } else {
+               cursorDecorations[username] = editor.deltaDecorations([], [{ range, options }]);
+             }
+         
+             const cursorCoords = editor.getScrolledVisiblePosition({ lineNumber: position.lineNumber, column: position.column });
+             if (cursorCoords) {
+               let label = document.querySelector(`.username-label[data-username="${username}"]`);
+               if (!label) {
+                 label = document.createElement('div');
+                 label.className = 'username-label';
+                 label.dataset.username = username;
+                 document.body.appendChild(label);
+               }
+               label.textContent = username;
+         
+               const labelOffset = 20;
+               label.style.left = `${cursorCoords.left}px`;
+               label.style.top = `${cursorCoords.top + labelOffset}px`;
+             }
+           }
+         });
+         
+         socket.onopen = () => console.log('WebSocket connection established');
+         socket.onerror = (error) => console.error('WebSocket error:', error);
+         socket.onclose = () => console.log('WebSocket connection closed');
+         
+         document.getElementById('run-button').addEventListener('click', () => {
+           const code = editor.getValue();
+           const language = document.getElementById('language-select').value;
+           const input = document.getElementById('custom-input').value;
+         
+           runCodeWithPistonAPI(code, language, input)
+             .then(output => {
+               if (socket.readyState === WebSocket.OPEN) {
+                 socket.send(JSON.stringify({
+                   type: 'run-output',
+                   data: { output, username, clientId }
+                 }));
+               }
+               displayOutput(output);
+             })
+             .catch(error => {
+               console.error("Error running code:", error);
+               displayOutput({ output: error.toString() });
+             });
+         });
+         
+         async function runCodeWithPistonAPI(code, language, input) {
+           const response = await fetch('https://emkc.org/api/v2/piston/execute', {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify({
+               language: language,
+               files: code,
+               stdin: input,
+               version: "*"
+             })
+           });
+         
+           const result = await response.json();
+           return result.run ? result.run : { output: 'No output or error occurred.' };
+         }
+         
+         function displayOutput(output) {
+           const outputElement = document.getElementById('output');
+           outputElement.textContent = output.output || 'No output';
+           outputElement.innerHTML = outputElement.innerHTML.replace(/\n/g, '<br>');
+         }
+         
+         document.getElementById('language-select').addEventListener('change', (event) => {
+           monaco.editor.setModelLanguage(editor.getModel(), event.target.value);
+         });
+      </script>
+   </body>
 </html>
