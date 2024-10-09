@@ -229,17 +229,26 @@
       });
 
       socket.onmessage = (event) => {
-        const message = JSON.parse(event.data);
-        if (message.data.clientId === clientId) return;
+        if (event.data instanceof Blob) {
+          // Read Blob data
+          const reader = new FileReader();
+          reader.onload = function() {
+            const message = JSON.parse(reader.result);
 
-        if (message.type === 'delta') {
-          isRemoteUpdate = true;
-          applyDeltas(message.data.changes);
-          isRemoteUpdate = false;
-        } else if (message.type === 'cursor') {
-          updateCursor(message.data);
-        } else if (message.type === 'run-output') {
-          displayOutput(message.data.output);
+            // Check if the message is not from the current client
+            if (message.data.clientId === clientId) return;
+
+            if (message.type === 'delta') {
+              isRemoteUpdate = true;
+              applyDeltas(message.data.changes);
+              isRemoteUpdate = false;
+            } else if (message.type === 'cursor') {
+              updateCursor(message.data);
+            } else if (message.type === 'run-output') {
+              displayOutput(message.data.output);
+            }
+          };
+          reader.readAsText(event.data);
         }
       };
 
