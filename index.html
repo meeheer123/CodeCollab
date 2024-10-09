@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/monaco-editor/min/vs/editor/editor.main.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
   <style>
+    /* Existing CSS styles remain the same */
     :root {
       --primary-color: #3498db;
       --secondary-color: #2ecc71;
@@ -182,7 +183,12 @@
 
     const clientId = Math.random().toString(36).substr(2, 9);
 
-    const socket = new WebSocket('wss://spectrum-working-surf.glitch.me');
+    // Get the room ID from the URL query parameter or default to 'default'
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomId = urlParams.get('room') || 'default';
+
+    // Establish WebSocket connection with room
+    const socket = new WebSocket(`ws://localhost:8080/?room=${roomId}`);
     
     let editor;
     let cursorDecorations = {};
@@ -223,27 +229,17 @@
       });
 
       socket.onmessage = (event) => {
-        if (event.data instanceof Blob) {
-          const reader = new FileReader();
-          reader.onload = () => {
-            try {
-              const message = JSON.parse(reader.result);
-              if (message.data.clientId === clientId) return;
+        const message = JSON.parse(event.data);
+        if (message.data.clientId === clientId) return;
 
-              if (message.type === 'delta') {
-                isRemoteUpdate = true;
-                applyDeltas(message.data.changes);
-                isRemoteUpdate = false;
-              } else if (message.type === 'cursor') {
-                updateCursor(message.data);
-              } else if (message.type === 'run-output') {
-                displayOutput(message.data.output);
-              }
-            } catch (error) {
-              console.error('Error parsing WebSocket message:', error);
-            }
-          };
-          reader.readAsText(event.data);
+        if (message.type === 'delta') {
+          isRemoteUpdate = true;
+          applyDeltas(message.data.changes);
+          isRemoteUpdate = false;
+        } else if (message.type === 'cursor') {
+          updateCursor(message.data);
+        } else if (message.type === 'run-output') {
+          displayOutput(message.data.output);
         }
       };
 
@@ -260,9 +256,7 @@
 
       function updateCursor(cursorData) {
         const { username, position } = cursorData;
-        if (username !== clientId) {
-          showUserCursor(username, position);
-        }
+        showUserCursor(username, position);
       }
 
       function showUserCursor(username, position) {
