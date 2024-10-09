@@ -188,7 +188,7 @@
     const roomId = urlParams.get('room') || 'default';
 
     // Establish WebSocket connection with room
-    const socket = new WebSocket(`ws://localhost:8080/?room=${roomId}`);
+    const socket = new WebSocket(`wss://spectrum-working-surf.glitch.me/?room=${roomId}`);
     
     let editor;
     let cursorDecorations = {};
