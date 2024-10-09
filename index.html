@@ -8,17 +8,23 @@
   <style>
     #editor {
       width: 100%;
-      height: 90vh;
+      height: 80vh;
       border: 1px solid #ddd;
     }
-
+    #run-button {
+      margin: 10px 0;
+      padding: 10px 15px;
+      background-color: green;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
     .user-cursor {
       position: absolute;
       width: 2px;
       background-color: red;
       z-index: 100;
     }
-
     .username-label {
       position: absolute;
       background-color: rgba(255, 0, 0, 0.7);
@@ -28,22 +34,29 @@
       border-radius: 3px;
       z-index: 101;
     }
+    #output {
+      white-space: pre-wrap;
+      background: #f4f4f4;
+      padding: 10px;
+      border: 1px solid #ddd;
+    }
   </style>
 </head>
 <body>
   <h1>Collaborative Code Editor</h1>
   <div id="editor"></div>
+  <button id="run-button">Run Code</button>
+  <div id="output"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/monaco-editor/min/vs/loader.js"></script>
   <script>
-    const username = "client" + Math.floor(Math.random() * 1000); // Generate a random client username
-    const clientId = Math.random().toString(36).substr(2, 9); // Unique client ID for each client
+    const username = "client" + Math.floor(Math.random() * 1000);
+    const clientId = Math.random().toString(36).substr(2, 9);
 
     const socket = new WebSocket('wss://spectrum-working-surf.glitch.me');
-    
     let editor;
     let cursorDecorations = {};
-    let isRemoteUpdate = false; // Flag to track whether the change is from a remote client
+    let isRemoteUpdate = false;
 
     // Setup Monaco Editor
     require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor/min/vs' }});
@@ -56,10 +69,8 @@
 
       // Listen for changes and send deltas to WebSocket server
       editor.onDidChangeModelContent((event) => {
-        if (isRemoteUpdate) {
-          return; // Prevent sending the change if it's a remote update
-        }
-        
+        if (isRemoteUpdate) return;
+
         const changes = event.changes;
         if (socket.readyState === WebSocket.OPEN) {
           socket.send(JSON.stringify({
@@ -67,7 +78,7 @@
             data: {
               changes: changes,
               username: username,
-              clientId: clientId // Include the client ID
+              clientId: clientId
             }
           }));
         }
@@ -75,9 +86,7 @@
 
       // Send cursor position updates to the server
       editor.onDidChangeCursorPosition((e) => {
-        if (isRemoteUpdate) {
-          return; // Ignore cursor changes from remote updates
-        }
+        if (isRemoteUpdate) return;
 
         const position = editor.getPosition();
         if (socket.readyState === WebSocket.OPEN) {
@@ -86,44 +95,36 @@
             data: {
               username: username,
               position: position,
-              clientId: clientId // Include the client ID
+              clientId: clientId
             }
           }));
         }
       });
 
-      // Handle incoming WebSocket messages (deltas or cursor updates)
+      // WebSocket listener for incoming deltas or cursor updates
       socket.onmessage = (event) => {
         if (event.data instanceof Blob) {
           const reader = new FileReader();
           reader.onload = () => {
-            try {
-              const message = JSON.parse(reader.result);
+            const message = JSON.parse(reader.result);
+            if (message.data.clientId === clientId) return;
 
-              // Ignore messages from the same client
-              if (message.data.clientId === clientId) {
-                return;
-              }
-
-              console.log("Received from WebSocket:", message);
-
-              if (message.type === 'delta') {
-                isRemoteUpdate = true; // Set the flag to true before applying remote changes
-                applyDeltas(message.data.changes);
-                isRemoteUpdate = false; // Reset the flag after the changes have been applied
-              } else if (message.type === 'cursor') {
-                updateCursor(message.data);
-              }
-            } catch (error) {
-              console.error('Error parsing WebSocket message:', error);
+            if (message.type === 'delta') {
+              isRemoteUpdate = true;
+              applyDeltas(message.data.changes);
+              isRemoteUpdate = false;
+            } else if (message.type === 'cursor') {
+              updateCursor(message.data);
+            } else if (message.type === 'output') {
+              displayOutput(message.data.output);
             }
           };
           reader.readAsText(event.data);
         }
       };
 
+      // Apply deltas
       function applyDeltas(changes) {
-        // Use Monaco's executeEdits to apply changes
         editor.executeEdits(null, changes.map(change => ({
           range: new monaco.Range(
             change.range.startLineNumber, change.range.startColumn,
@@ -134,19 +135,56 @@
         })));
       }
 
+      // Update user cursor
       function updateCursor(cursorData) {
         const { username, position } = cursorData;
-        if (username !== clientId) { // Ignore the current user's cursor
+        if (username !== clientId) {
           showUserCursor(username, position);
         }
       }
 
+      // Display output
+      function displayOutput(output) {
+        const outputElement = document.getElementById('output');
+        outputElement.textContent = output;
+      }
+
+      // Run code on button click
+      document.getElementById('run-button').addEventListener('click', async () => {
+        const code = editor.getValue();
+        const language = editor.getModel().getLanguageId();
+
+        const result = await runCodeOnPiston(code, language);
+        if (result) {
+          socket.send(JSON.stringify({
+            type: 'output',
+            data: {
+              output: result,
+              clientId: clientId
+            }
+          }));
+        }
+      });
+
+      // Piston API call
+      async function runCodeOnPiston(code, language) {
+        const response = await fetch('https://emkc.org/api/v2/piston/execute', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            language: language || 'javascript',
+            source: code
+          })
+        });
+
+        const result = await response.json();
+        return result.output || result.message;
+      }
+
+      // Show user cursor
       function showUserCursor(username, position) {
         const range = new monaco.Range(position.lineNumber, position.column, position.lineNumber, position.column);
-        const options = {
-          className: `user-cursor`,
-          stickiness: 1
-        };
+        const options = { className: `user-cursor`, stickiness: 1 };
 
         if (cursorDecorations[username]) {
           editor.deltaDecorations(cursorDecorations[username], [{ range, options }]);
@@ -164,7 +202,6 @@
             document.body.appendChild(label);
           }
           label.textContent = username;
-
           const labelOffset = 100;
           label.style.left = `${cursorCoords.left}px`;
           label.style.top = `${cursorCoords.top + labelOffset}px`;
@@ -172,18 +209,9 @@
       }
     });
 
-    // WebSocket event handlers
-    socket.onopen = () => {
-      console.log('WebSocket connection established');
-    };
-
-    socket.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
-
-    socket.onclose = () => {
-      console.log('WebSocket connection closed');
-    };
+    socket.onopen = () => console.log('WebSocket connection established');
+    socket.onerror = error => console.error('WebSocket error:', error);
+    socket.onclose = () => console.log('WebSocket connection closed');
   </script>
 </body>
 </html>
