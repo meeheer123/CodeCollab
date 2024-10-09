@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CodeCollab - Collaborative Code Editor</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/monaco-editor/min/vs/editor/editor.main.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
   <style>
     :root {
       --primary-color: #3498db;
@@ -13,6 +13,8 @@
       --background-color: #f8f9fa;
       --text-color: #333;
       --border-color: #e0e0e0;
+      --output-bg-color: #2d3748;
+      --output-text-color: #e2e8f0;
     }
     body {
       margin: 0;
@@ -23,7 +25,7 @@
     }
     .container {
       display: flex;
-      height: 100vh;
+      height: calc(100vh - 60px);
     }
     #editor {
       width: 60%;
@@ -49,7 +51,7 @@
       height: 50%;
       display: flex;
       flex-direction: column;
-      background-color: #ffffff;
+      background-color: var(--output-bg-color);
     }
     #run-button {
       padding: 12px 20px;
@@ -69,9 +71,19 @@
       padding: 20px;
       white-space: pre-wrap;
       overflow-y: auto;
-      font-family: 'Courier New', monospace;
+      font-family: 'Fira Code', monospace;
       font-size: 14px;
-      line-height: 1.5;
+      line-height: 1.6;
+      color: var(--output-text-color);
+      background-color: var(--output-bg-color);
+      border-radius: 0 0 4px 4px;
+    }
+    .output-header {
+      background-color: #1a202c;
+      color: var(--output-text-color);
+      padding: 10px 20px;
+      font-weight: 500;
+      border-bottom: 1px solid #4a5568;
     }
     .user-cursor {
       position: absolute;
@@ -95,6 +107,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      height: 40px;
     }
     .logo {
       font-size: 24px;
@@ -117,6 +130,7 @@
     <div class="right-panel">
       <div id="video-placeholder">Video collaboration coming soon</div>
       <div class="output-section">
+        <div class="output-header">Output</div>
         <button id="run-button">Run Code</button>
         <div id="output"></div>
       </div>
@@ -283,7 +297,9 @@
     }
 
     function displayOutput(output) {
-      document.getElementById('output').textContent = output.output || 'No output';
+      const outputElement = document.getElementById('output');
+      outputElement.textContent = output.output || 'No output';
+      outputElement.innerHTML = outputElement.innerHTML.replace(/\n/g, '<br>');
     }
   </script>
 </body>
