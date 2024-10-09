@@ -38,7 +38,7 @@
       flex-direction: column;
     }
     #video-placeholder {
-      height: 50%;
+      height: 30%;
       background-color: #ffffff;
       display: flex;
       justify-content: center;
@@ -48,41 +48,67 @@
       color: #888;
     }
     .output-section {
-      height: 50%;
+      height: 70%;
       display: flex;
       flex-direction: column;
       background-color: var(--output-bg-color);
     }
+    .control-panel {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+      background-color: #1a202c;
+      border-bottom: 1px solid #4a5568;
+    }
+    #language-select {
+      padding: 5px 10px;
+      border-radius: 4px;
+      border: 1px solid var(--border-color);
+      background-color: #2d3748;
+      color: var(--output-text-color);
+      font-family: 'Inter', sans-serif;
+    }
     #run-button {
-      padding: 12px 20px;
+      padding: 8px 16px;
       background-color: var(--secondary-color);
       color: white;
       border: none;
+      border-radius: 4px;
       cursor: pointer;
-      font-size: 16px;
+      font-size: 14px;
       font-weight: 600;
       transition: background-color 0.3s ease;
     }
     #run-button:hover {
       background-color: #27ae60;
     }
-    #output {
+    .input-output-container {
+      display: flex;
+      flex-direction: column;
       flex-grow: 1;
-      padding: 20px;
-      white-space: pre-wrap;
-      overflow-y: auto;
+      overflow: hidden;
+    }
+    #custom-input, #output {
+      flex-grow: 1;
+      padding: 10px;
       font-family: 'Fira Code', monospace;
       font-size: 14px;
       line-height: 1.6;
       color: var(--output-text-color);
       background-color: var(--output-bg-color);
-      border-radius: 0 0 4px 4px;
+      border: none;
+      resize: none;
     }
-    .output-header {
+    #custom-input {
+      border-bottom: 1px solid #4a5568;
+    }
+    .output-header, .input-header {
       background-color: #1a202c;
       color: var(--output-text-color);
-      padding: 10px 20px;
+      padding: 5px 10px;
       font-weight: 500;
+      font-size: 14px;
       border-bottom: 1px solid #4a5568;
     }
     .user-cursor {
@@ -130,9 +156,21 @@
     <div class="right-panel">
       <div id="video-placeholder">Video collaboration coming soon</div>
       <div class="output-section">
-        <div class="output-header">Output</div>
-        <button id="run-button">Run Code</button>
-        <div id="output"></div>
+        <div class="control-panel">
+          <select id="language-select">
+            <option value="javascript">JavaScript</option>
+            <option value="python">Python</option>
+            <option value="java">Java</option>
+            <option value="cpp">C++</option>
+          </select>
+          <button id="run-button">Run Code</button>
+        </div>
+        <div class="input-output-container">
+          <div class="input-header">Custom Input</div>
+          <textarea id="custom-input" placeholder="Enter custom input here..."></textarea>
+          <div class="output-header">Output</div>
+          <div id="output"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -264,8 +302,10 @@
 
     document.getElementById('run-button').addEventListener('click', () => {
       const code = editor.getValue();
+      const language = document.getElementById('language-select').value;
+      const input = document.getElementById('custom-input').value;
 
-      runCodeWithPistonAPI(code)
+      runCodeWithPistonAPI(code, language, input)
         .then(output => {
           if (socket.readyState === WebSocket.OPEN) {
             socket.send(JSON.stringify({
@@ -281,13 +321,14 @@
         });
     });
 
-    async function runCodeWithPistonAPI(code) {
+    async function runCodeWithPistonAPI(code, language, input) {
       const response = await fetch('https://emkc.org/api/v2/piston/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          language: "javascript",
+          language: language,
           files: code,
+          stdin: input,
           version: "*"
         })
       });
@@ -301,6 +342,10 @@
       outputElement.textContent = output.output || 'No output';
       outputElement.innerHTML = outputElement.innerHTML.replace(/\n/g, '<br>');
     }
+
+    document.getElementById('language-select').addEventListener('change', (event) => {
+      monaco.editor.setModelLanguage(editor.getModel(), event.target.value);
+    });
   </script>
 </body>
 </html>
