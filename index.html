@@ -336,7 +336,7 @@
                             } else if (message.type === "run-output") {
                                 displayOutput(message.data.output);
                             } else if (message.type === "run-code") {
-                                displayOutput(message.data.output);
+                                displayInput(message.data.input);
                             }
                         };
                         reader.readAsText(event.data);
@@ -458,6 +458,11 @@
                 const outputElement = document.getElementById("output");
                 outputElement.textContent = output.output || "No output";
                 outputElement.innerHTML = outputElement.innerHTML.replace(/\n/g, "<br>");
+            }
+
+            function displayInput(input) {
+                const inputElement = document.getElementById("custom-input");
+                inputElement.textContent = input.input || "No input";
             }
 
             document.getElementById("language-select").addEventListener("change", (event) => {
