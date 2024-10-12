@@ -314,15 +314,12 @@
                     }
                 });
 
-                document.getElementById('run-button').addEventListener('click', () => {
-                    const code = editor.getValue();
-                    const language = document.getElementById("language-select").value;
-                    const input = document.getElementById("custom-input").value;
+                document.getElementById("custom-input").addEventListener('change', () => {
                     if (socket.readyState === WebSocket.OPEN) {
                         socket.send(
                             JSON.stringify({
-                                type: "run-code",
-                                data: { code, language, input, username, clientId },
+                                type: "change-input",
+                                data: { input: document.getElementById("custom-input").value, username, clientId },
                             })
                         );
                     }
@@ -346,10 +343,10 @@
                                 updateCursor(message.data);
                             } else if (message.type === "run-output") {
                                 displayOutput(message.data.output);
-                            } else if (message.type === "run-code") {
-                                displayInput(message.data);
                             } else if (message.type === "language") {
                                 setLanguage(message.data.language);
+                            } else if (message.type === "change-input") {
+                                displayInput(message.data);
                             }
                         };
                         reader.readAsText(event.data);
