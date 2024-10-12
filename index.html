@@ -303,6 +303,17 @@
                     }
                 });
 
+                document.getElementById('language-select').addEventListener('change', ()=> {
+                    if (socket.readyState === WebSocket.OPEN) {
+                        socket.send(
+                            JSON.stringify({
+                                type: "language",
+                                data: { language: document.getElementById("language-select").value, username, clientId },
+                            })
+                        );
+                    }
+                });
+
                 document.getElementById('run-button').addEventListener('click', () => {
                     const code = editor.getValue();
                     const language = document.getElementById("language-select").value;
@@ -336,7 +347,9 @@
                             } else if (message.type === "run-output") {
                                 displayOutput(message.data.output);
                             } else if (message.type === "run-code") {
-                                displayInput(message.data.input);
+                                displayInput(message.data);
+                            } else if (message.type === "language") {
+                                setLanguage(message.data.language);
                             }
                         };
                         reader.readAsText(event.data);
@@ -462,12 +475,13 @@
 
             function displayInput(input) {
                 const inputElement = document.getElementById("custom-input");
-                inputElement.textContent = input.input || "No input";
+                inputElement.textContent = input.input || "";
             }
 
-            document.getElementById("language-select").addEventListener("change", (event) => {
-                monaco.editor.setModelLanguage(editor.getModel(), event.target.value);
-            });
+            function setLanguage(language) {
+                monaco.editor.setModelLanguage(editor.getModel(), language);
+                document.getElementById("language-select").value = language;
+            }
         </script>
     </body>
 </html>
