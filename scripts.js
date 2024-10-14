@@ -234,6 +234,8 @@ function setLanguage(language) {
 }
 
 // WebRTC functions
+// Other WebSocket and editor setup remains the same
+
 async function initializeWebRTC() {
     try {
         localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -255,11 +257,70 @@ async function initializeWebRTC() {
             }
         };
 
-        await createAndSendOffer();
+        await createAndSendOffer(); // Send offer to the other peer
     } catch (error) {
         console.error('Error setting up WebRTC:', error);
     }
 }
+
+async function createAndSendOffer() {
+    try {
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+        sendWebRTCSignal({ type: 'offer', offer: offer });
+    } catch (error) {
+        console.error('Error creating offer:', error);
+    }
+}
+
+function sendWebRTCSignal(signal) {
+    if (socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({
+            type: 'webrtc-signal',
+            data: { signal, username, clientId }
+        }));
+    }
+}
+
+async function handleWebRTCSignal(data) {
+    if (data.signal.type === 'offer') {
+        // Received offer from the other peer
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(data.signal.offer));
+        const answer = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answer);
+        sendWebRTCSignal({ type: 'answer', answer: answer });
+    } else if (data.signal.type === 'answer') {
+        // Received answer from the other peer
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(data.signal.answer));
+    } else if (data.signal.type === 'ice-candidate') {
+        // Add received ICE candidate
+        await peerConnection.addIceCandidate(new RTCIceCandidate(data.signal.candidate));
+    }
+}
+
+// Function to get ICE servers from the WebSocket server (optional but recommended for different networks)
+async function requestIceServers() {
+    socket.send(JSON.stringify({
+        type: 'get-ice-servers',
+        data: { username, clientId }
+    }));
+}
+
+socket.onmessage = (event) => {
+    const message = JSON.parse(event.data);
+
+    if (message.data.clientId === clientId) return;
+
+    if (message.type === 'webrtc-signal') {
+        handleWebRTCSignal(message.data);
+    }
+};
+
+// Call requestIceServers on connection open to get ICE servers for NAT traversal
+socket.onopen = () => {
+    requestIceServers(); // Fetch ICE servers when WebSocket connection is opened
+    initializeWebRTC(); // Initialize WebRTC once the WebSocket connection is established
+};
 
 async function createAndSendOffer() {
     try {
