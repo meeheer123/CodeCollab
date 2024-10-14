@@ -257,6 +257,7 @@ async function initializeWebRTC() {
 
         peerConnection.onicecandidate = (event) => {
             if (event.candidate) {
+                console.log("New ICE candidate:", event.candidate);
                 sendWebRTCSignal({ type: 'ice-candidate', candidate: event.candidate });
             }
         };
@@ -291,7 +292,7 @@ async function handleWebRTCSignal(data) {
         await peerConnection.setRemoteDescription(new RTCSessionDescription(data.signal.offer));
         const answer = await peerConnection.createAnswer();
         await peerConnection.setLocalDescription(answer);
-        console.log(peerConnection, "peerConnection", answer, "answer", data.signal.type, "type")
+        // console.log(peerConnection, "peerConnection", answer, "answer", data.signal.type, "type")
         sendWebRTCSignal({ type: 'answer', answer: answer });
     } else if (data.signal.type === 'answer') {
         await peerConnection.setRemoteDescription(new RTCSessionDescription(data.signal.answer));
