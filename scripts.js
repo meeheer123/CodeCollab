@@ -245,19 +245,27 @@ async function initializeWebRTC() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-            }
+            },
+            body: JSON.stringify({
+                expiryInSeconds: 3600,   // Token expiration time
+                label: "exampleLabel"
+            }),
         });
 
-        if (!response.ok) {
-            throw new Error(`Failed to fetch ICE servers: ${response.statusText}`);
-        }
-
+        // Await the response and parse it as JSON
         const iceServerResponse = await response.json();
-        const iceServers = iceServerResponse.iceServers;
 
-        console.log(iceServers, "iceServers")
+        // Construct iceServers array using the response
+        const iceServers = [
+            { urls: 'stun:stun.l.google.com:19302' }, // Adding a public STUN server for redundancy
+            {
+                urls: 'turn:codecollab.metered.live', // TURN server URL (from your service)
+                username: iceServerResponse.username, // Username provided in the response
+                credential: iceServerResponse.password // Password (credential) provided in the response
+            }
+        ];
 
-        // Create the peer connection with the fetched ICE servers
+        // Now create the peer connection with the constructed iceServers
         peerConnection = new RTCPeerConnection({ iceServers });
 
         // Add local media tracks to the peer connection
@@ -267,9 +275,7 @@ async function initializeWebRTC() {
 
         // Handle incoming remote stream
         peerConnection.ontrack = (event) => {
-            if (event.streams && event.streams.length > 0) {
-                document.getElementById('remote-video').srcObject = event.streams[0];
-            }
+            document.getElementById('remote-video').srcObject = event.streams[0];
         };
 
         // Handle ICE candidates
