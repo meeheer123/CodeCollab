@@ -239,21 +239,7 @@ async function initializeWebRTC() {
         localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         document.getElementById('local-video').srcObject = localStream;
 
-        // Add STUN and TURN servers for NAT traversal
-        peerConnection = new RTCPeerConnection({
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' },
-                { urls: 'stun:stun2.l.google.com:19302' },
-                { urls: 'stun:stun3.l.google.com:19302' },
-                { urls: 'stun:stun4.l.google.com:19302' },
-                {
-                    urls: 'turn:relay.backups.cz',
-                    credential: 'webrtc',
-                    username: 'webrtc'
-                }
-            ]
-        });
+        peerConnection = new RTCPeerConnection();
 
         localStream.getTracks().forEach(track => {
             peerConnection.addTrack(track, localStream);
@@ -265,13 +251,10 @@ async function initializeWebRTC() {
 
         peerConnection.onicecandidate = (event) => {
             if (event.candidate) {
-                console.log("ICE Candidate:", event.candidate);
                 sendWebRTCSignal({ type: 'ice-candidate', candidate: event.candidate });
-            } else {
-                console.log("All ICE candidates have been sent.");
             }
         };
-                
+
         await createAndSendOffer();
     } catch (error) {
         console.error('Error setting up WebRTC:', error);
