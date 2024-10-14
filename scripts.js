@@ -2,7 +2,7 @@
 const username = "user" + Math.floor(Math.random() * 1000);
 document.getElementById("username").textContent = username;
 
-const clientId = Math.random().toString(36).substr(2, 9);
+const clientId = Math.random().toString(36);
 
 const urlParams = new URLSearchParams(window.location.search);
 const roomId = urlParams.get("room") || "default";
@@ -238,6 +238,12 @@ async function initializeWebRTC() {
     try {
         localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         document.getElementById('local-video').srcObject = localStream;
+
+        const configuration = {
+            iceServers: [
+                { urls: "stun:stun.l.google.com:19302" }, // Google STUN server
+            ]
+        };
 
         peerConnection = new RTCPeerConnection();
 
