@@ -290,7 +290,11 @@ async function initializeWebRTC() {
 
         peerConnection.oniceconnectionstatechange = () => {
             console.log('ICE connection state:', peerConnection.iceConnectionState);
-        };        
+        };
+        
+        peerConnection.onicegatheringstatechange = () => {
+            console.log('ICE gathering state:', peerConnection.iceGatheringState);
+        };               
 
         // Create and send the WebRTC offer to the other peer
         await createAndSendOffer();
