@@ -239,13 +239,17 @@ async function initializeWebRTC() {
         localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         document.getElementById('local-video').srcObject = localStream;
 
-        peerConnection = new RTCPeerConnection({
-            iceServers: [
-                {
-                    urls: "stun:stun.l.google.com:19302" // Google's public STUN server
-                }
-            ]
-        });
+        // ICE servers configuration with public STUN and TURN servers
+        const iceServers = [
+            { urls: 'stun:stun.l.google.com:19302' }, // Free public STUN server by Google
+            {
+                urls: 'turn:TURN_SERVER_URL', // Replace with your TURN server URL
+                username: 'TURN_SERVER_USERNAME', // Replace with TURN server username
+                credential: 'TURN_SERVER_CREDENTIAL' // Replace with TURN server credential
+            }
+        ];
+
+        peerConnection = new RTCPeerConnection({ iceServers });
 
         localStream.getTracks().forEach(track => {
             peerConnection.addTrack(track, localStream);
@@ -257,7 +261,6 @@ async function initializeWebRTC() {
 
         peerConnection.onicecandidate = (event) => {
             if (event.candidate) {
-                console.log("New ICE candidate:", event.candidate);
                 sendWebRTCSignal({ type: 'ice-candidate', candidate: event.candidate });
             }
         };
@@ -292,7 +295,6 @@ async function handleWebRTCSignal(data) {
         await peerConnection.setRemoteDescription(new RTCSessionDescription(data.signal.offer));
         const answer = await peerConnection.createAnswer();
         await peerConnection.setLocalDescription(answer);
-        // console.log(peerConnection, "peerConnection", answer, "answer", data.signal.type, "type")
         sendWebRTCSignal({ type: 'answer', answer: answer });
     } else if (data.signal.type === 'answer') {
         await peerConnection.setRemoteDescription(new RTCSessionDescription(data.signal.answer));
