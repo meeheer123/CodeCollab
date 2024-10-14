@@ -239,7 +239,7 @@ async function initializeWebRTC() {
         localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         document.getElementById('local-video').srcObject = localStream;
 
-        const peerConnection = new RTCPeerConnection({
+        peerConnection = new RTCPeerConnection({
             iceServers: [
                 {
                     urls: "stun:stun.l.google.com:19302" // Google's public STUN server
