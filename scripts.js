@@ -236,74 +236,44 @@ function setLanguage(language) {
 // WebRTC functions
 async function initializeWebRTC() {
     try {
-        // Get local media stream (audio and video)
         localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         document.getElementById('local-video').srcObject = localStream;
 
-        // Fetch ICE server credentials from the TURN server API
-        const response = await fetch(`https://codecollab.metered.live/api/v1/turn/credential?secretKey=SinmweFk5QVcDN_MLs8TupjiUjRtnCERnLWUtdxay_ldCr_L`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                expiryInSeconds: 3600,   // Token expiration time
-                label: "exampleLabel"
-            }),
+        // Add STUN and TURN servers for NAT traversal
+        peerConnection = new RTCPeerConnection({
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' },
+                { urls: 'stun:stun3.l.google.com:19302' },
+                { urls: 'stun:stun4.l.google.com:19302' },
+                {
+                    urls: 'turn:relay.backups.cz',
+                    credential: 'webrtc',
+                    username: 'webrtc'
+                }
+            ]
         });
 
-        // Await the response and parse it as JSON
-        const iceServerResponse = await response.json();
-
-        // Construct iceServers array using the response
-        const iceServers = [
-            { urls: 'stun:stun.l.google.com:19302' }, // Adding a public STUN server for redundancy
-            {
-                urls: 'turn:codecollab.metered.live', // TURN server URL (from your service)
-                username: iceServerResponse.username, // Username provided in the response
-                credential: iceServerResponse.password // Password (credential) provided in the response
-            }
-        ];
-
-        console.log(iceServers, "iceServers")
-
-        // Now create the peer connection with the constructed iceServers
-        peerConnection = new RTCPeerConnection({ iceServers });
-
-        // Add local media tracks to the peer connection
         localStream.getTracks().forEach(track => {
             peerConnection.addTrack(track, localStream);
         });
 
-        // Handle incoming remote stream
         peerConnection.ontrack = (event) => {
             document.getElementById('remote-video').srcObject = event.streams[0];
         };
 
-        // Handle ICE candidates
         peerConnection.onicecandidate = (event) => {
             if (event.candidate) {
-                console.log("Sending ICE Candidate:", event.candidate);
                 sendWebRTCSignal({ type: 'ice-candidate', candidate: event.candidate });
             }
         };
 
-        peerConnection.oniceconnectionstatechange = () => {
-            console.log('ICE connection state:', peerConnection.iceConnectionState);
-        };
-        
-        peerConnection.onicegatheringstatechange = () => {
-            console.log('ICE gathering state:', peerConnection.iceGatheringState);
-        };               
-
-        // Create and send the WebRTC offer to the other peer
         await createAndSendOffer();
-
     } catch (error) {
         console.error('Error setting up WebRTC:', error);
     }
 }
-
 
 async function createAndSendOffer() {
     try {
