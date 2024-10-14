@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>CodeCollab - Collaborative Code Editor</title>
+        <title>CodeCollab - Collaborative Code Editor with Video Call</title>
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/monaco-editor/min/vs/editor/editor.main.css" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet" />
         <style>
@@ -38,15 +38,53 @@
                 display: flex;
                 flex-direction: column;
             }
-            #video-placeholder {
+            #video-container {
                 height: 30%;
                 background-color: #ffffff;
                 display: flex;
                 justify-content: center;
                 align-items: center;
                 border-bottom: 1px solid var(--border-color);
-                font-weight: 500;
-                color: #888;
+                position: relative;
+                overflow: hidden;
+            }
+            #remote-video {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            }
+            #local-video {
+                position: absolute;
+                bottom: 10px;
+                right: 10px;
+                width: 100px;
+                height: 75px;
+                object-fit: cover;
+                border: 2px solid white;
+                border-radius: 5px;
+            }
+            .video-controls {
+                position: absolute;
+                bottom: 10px;
+                left: 50%;
+                transform: translateX(-50%);
+                display: flex;
+                gap: 10px;
+            }
+            .video-button {
+                background-color: rgba(0, 0, 0, 0.5);
+                color: white;
+                border: none;
+                border-radius: 50%;
+                width: 40px;
+                height: 40px;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                cursor: pointer;
+            }
+            .video-button:hover {
+                background-color: rgba(0, 0, 0, 0.7);
             }
             .output-section {
                 height: 70%;
@@ -132,14 +170,13 @@
                 font-size: 14px;
                 color: #888;
             }
-            /* Style the collaborative cursor */
             .user-cursor {
                 position: absolute;
-                width: 2px; /* Set the width to 2px */
-                height: 1.2em; /* Matches text line height */
-                background-color: var(--primary-color); /* Ensure this color stands out */
+                width: 2px;
+                height: 1.2em;
+                background-color: var(--primary-color);
                 z-index: 100;
-                animation: blink 1s steps(2, start) infinite; /* Blinking effect */
+                animation: blink 1s steps(2, start) infinite;
             }
             @keyframes blink {
                 50% {
@@ -155,7 +192,6 @@
                 border-radius: 3px;
                 z-index: 101;
             }
-            /* Media queries for responsiveness */
             @media (max-width: 1024px) {
                 .container {
                     flex-direction: column;
@@ -178,8 +214,8 @@
                 .container {
                     height: auto;
                 }
-                #video-placeholder {
-                    display: none;
+                #video-container {
+                    height: 200px;
                 }
                 .output-section {
                     height: auto;
@@ -227,7 +263,14 @@
         <div class="container">
             <div id="editor"></div>
             <div class="right-panel">
-                <div id="video-placeholder">Video collaboration coming soon</div>
+                <div id="video-container">
+                    <video id="remote-video" autoplay playsinline></video>
+                    <video id="local-video" autoplay playsinline muted></video>
+                    <div class="video-controls">
+                        <button id="toggle-audio" class="video-button">🎤</button>
+                        <button id="toggle-video" class="video-button">📹</button>
+                    </div>
+                </div>
                 <div class="output-section">
                     <div class="control-panel">
                         <select id="language-select">
@@ -254,16 +297,21 @@
 
             const clientId = Math.random().toString(36).substr(2, 9);
 
-            // Get the room ID from the URL query parameter or default to 'default'
             const urlParams = new URLSearchParams(window.location.search);
             const roomId = urlParams.get("room") || "default";
 
-            // Establish WebSocket connection with room
             const socket = new WebSocket(`wss://spectrum-working-surf.glitch.me/?room=${roomId}`);
 
             let editor;
             let cursorDecorations = {};
             let isRemoteUpdate = false;
+
+            // WebRTC variables
+            let localStream;
+            let remoteStream;
+            let peerConnection;
+            let isAudioMuted = false;
+            let isVideoOff = false;
 
             require.config({ paths: { vs: "https://cdn.jsdelivr.net/npm/monaco-editor/min/vs" } });
             require(["vs/editor/editor.main"], function () {
@@ -328,12 +376,10 @@
 
                 socket.onmessage = (event) => {
                     if (event.data instanceof Blob) {
-                        // Read Blob data
                         const reader = new FileReader();
                         reader.onload = function () {
                             const message = JSON.parse(reader.result);
 
-                            // Check if the message is not from the current client
                             if (message.data.clientId === clientId) return;
 
                             if (message.type === "delta") {
@@ -348,6 +394,8 @@
                                 setLanguage(message.data.language);
                             } else if (message.type === "change-input") {
                                 displayInput(message.data);
+                            } else if (message.type === "webrtc-signal") {
+                                handleWebRTCSignal(message.data);
                             }
                         };
                         reader.readAsText(event.data);
@@ -377,22 +425,19 @@
                         stickiness: 1,
                     };
 
-                    // Update or create a decoration for the user
                     if (cursorDecorations[username]) {
                         cursorDecorations[username] = editor.deltaDecorations(cursorDecorations[username], [{ range, options }]);
                     } else {
                         cursorDecorations[username] = editor.deltaDecorations([], [{ range, options }]);
                     }
 
-                    const cursorCoords = editor.getScrolledVisiblePosition({ lineNumber: position.lineNumber, column: position.column });
+                    const cursorCoords =   editor.getScrolledVisiblePosition({ lineNumber: position.lineNumber, column: position.column });
 
-                    // Check if cursorCoords are valid before proceeding
                     if (!cursorCoords) return;
 
                     let cursorElement = document.querySelector(`.user-cursor[data-username="${username}"]`);
                     let label = document.querySelector(`.username-label[data-username="${username}"]`);
 
-                    // Create the cursor element if it doesn't exist
                     if (!cursorElement) {
                         cursorElement = document.createElement("div");
                         cursorElement.className = "user-cursor";
@@ -400,7 +445,6 @@
                         document.body.appendChild(cursorElement);
                     }
 
-                    // Create the label element if it doesn't exist
                     if (!label) {
                         label = document.createElement("div");
                         label.className = "username-label";
@@ -409,20 +453,21 @@
                         document.body.appendChild(label);
                     }
 
-                    // Set the cursor position and ensure the width is 2px
                     cursorElement.style.left = `${cursorCoords.left}px`;
                     cursorElement.style.top = `${cursorCoords.top + 60}px`;
-                    cursorElement.style.width = "2px"; // Ensure cursor width is always 2px
-                    cursorElement.style.height = "1.2em"; // Match the line height for the text
+                    cursorElement.style.width = "2px";
+                    cursorElement.style.height = "1.2em";
 
-                    // Position the label slightly above the cursor
-                    const labelOffset = 80; // Adjust as needed
+                    const labelOffset = 80;
                     label.style.left = `${cursorCoords.left}px`;
                     label.style.top = `${cursorCoords.top + labelOffset}px`;
                 }
             });
 
-            socket.onopen = () => console.log("WebSocket connection established");
+            socket.onopen = () => {
+                console.log("WebSocket connection established");
+                initializeWebRTC();
+            };
             socket.onerror = (error) => console.error("WebSocket error:", error);
             socket.onclose = () => console.log("WebSocket connection closed");
 
@@ -480,6 +525,78 @@
                 monaco.editor.setModelLanguage(editor.getModel(), language);
                 document.getElementById("language-select").value = language;
             }
+
+            // WebRTC functions
+            async function initializeWebRTC() {
+                try {
+                    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                    document.getElementById('local-video').srcObject = localStream;
+
+                    peerConnection = new RTCPeerConnection();
+
+                    localStream.getTracks().forEach(track => {
+                        peerConnection.addTrack(track, localStream);
+                    });
+
+                    peerConnection.ontrack = (event) => {
+                        document.getElementById('remote-video').srcObject = event.streams[0];
+                    };
+
+                    peerConnection.onicecandidate = (event) => {
+                        if (event.candidate) {
+                            sendWebRTCSignal({ type: 'ice-candidate', candidate: event.candidate });
+                        }
+                    };
+
+                    await createAndSendOffer();
+                } catch (error) {
+                    console.error('Error setting up WebRTC:', error);
+                }
+            }
+
+            async function createAndSendOffer() {
+                try {
+                    const offer = await peerConnection.createOffer();
+                    await peerConnection.setLocalDescription(offer);
+                    sendWebRTCSignal({ type: 'offer', offer: offer });
+                } catch (error) {
+                    console.error('Error creating offer:', error);
+                }
+            }
+
+            function sendWebRTCSignal(signal) {
+                if (socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({
+                        type: 'webrtc-signal',
+                        data: { signal, username, clientId }
+                    }));
+                }
+            }
+
+            async function handleWebRTCSignal(data) {
+                if (data.signal.type === 'offer') {
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(data.signal.offer));
+                    const answer = await peerConnection.createAnswer();
+                    await peerConnection.setLocalDescription(answer);
+                    sendWebRTCSignal({ type: 'answer', answer: answer });
+                } else if (data.signal.type === 'answer') {
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(data.signal.answer));
+                } else if (data.signal.type === 'ice-candidate') {
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(data.signal.candidate));
+                }
+            }
+
+            document.getElementById('toggle-audio').addEventListener('click', () => {
+                isAudioMuted = !isAudioMuted;
+                localStream.getAudioTracks().forEach(track => track.enabled = !isAudioMuted);
+                document.getElementById('toggle-audio').textContent = isAudioMuted ? '🔇' : '🎤';
+            });
+
+            document.getElementById('toggle-video').addEventListener('click', () => {
+                isVideoOff = !isVideoOff;
+                localStream.getVideoTracks().forEach(track => track.enabled = !isVideoOff);
+                document.getElementById('toggle-video').textContent = isVideoOff ? '🚫' : '📹';
+            });
         </script>
     </body>
 </html>
