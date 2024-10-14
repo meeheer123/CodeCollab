@@ -255,6 +255,8 @@ async function initializeWebRTC() {
         const iceServerResponse = await response.json();
         const iceServers = iceServerResponse.iceServers;
 
+        console.log(iceServers, "iceServers")
+
         // Create the peer connection with the fetched ICE servers
         peerConnection = new RTCPeerConnection({ iceServers });
 
