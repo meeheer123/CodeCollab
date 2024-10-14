@@ -245,7 +245,7 @@ async function initializeWebRTC() {
             ]
         };
 
-        peerConnection = new RTCPeerConnection();
+        peerConnection = new RTCPeerConnection(configuration);
 
         localStream.getTracks().forEach(track => {
             peerConnection.addTrack(track, localStream);
