@@ -265,6 +265,8 @@ async function initializeWebRTC() {
             }
         ];
 
+        console.log(iceServers, "iceServers")
+
         // Now create the peer connection with the constructed iceServers
         peerConnection = new RTCPeerConnection({ iceServers });
 
@@ -281,9 +283,14 @@ async function initializeWebRTC() {
         // Handle ICE candidates
         peerConnection.onicecandidate = (event) => {
             if (event.candidate) {
+                console.log("Sending ICE Candidate:", event.candidate);
                 sendWebRTCSignal({ type: 'ice-candidate', candidate: event.candidate });
             }
         };
+
+        peerConnection.oniceconnectionstatechange = () => {
+            console.log('ICE connection state:', peerConnection.iceConnectionState);
+        };        
 
         // Create and send the WebRTC offer to the other peer
         await createAndSendOffer();
