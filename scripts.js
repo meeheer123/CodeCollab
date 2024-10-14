@@ -291,6 +291,7 @@ async function handleWebRTCSignal(data) {
         await peerConnection.setRemoteDescription(new RTCSessionDescription(data.signal.offer));
         const answer = await peerConnection.createAnswer();
         await peerConnection.setLocalDescription(answer);
+        console.log(peerConnection, "peerConnection", answer, "answer", data.signal.type, "type")
         sendWebRTCSignal({ type: 'answer', answer: answer });
     } else if (data.signal.type === 'answer') {
         await peerConnection.setRemoteDescription(new RTCSessionDescription(data.signal.answer));
