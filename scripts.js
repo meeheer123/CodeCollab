@@ -265,10 +265,13 @@ async function initializeWebRTC() {
 
         peerConnection.onicecandidate = (event) => {
             if (event.candidate) {
+                console.log("ICE Candidate:", event.candidate);
                 sendWebRTCSignal({ type: 'ice-candidate', candidate: event.candidate });
+            } else {
+                console.log("All ICE candidates have been sent.");
             }
         };
-
+                
         await createAndSendOffer();
     } catch (error) {
         console.error('Error setting up WebRTC:', error);
