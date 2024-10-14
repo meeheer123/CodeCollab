@@ -239,13 +239,13 @@ async function initializeWebRTC() {
         localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         document.getElementById('local-video').srcObject = localStream;
 
-        const configuration = {
+        const peerConnection = new RTCPeerConnection({
             iceServers: [
-                { urls: "stun:stun.l.google.com:19302" }, // Google STUN server
+                {
+                    urls: "stun:stun.l.google.com:19302" // Google's public STUN server
+                }
             ]
-        };
-
-        peerConnection = new RTCPeerConnection(configuration);
+        });
 
         localStream.getTracks().forEach(track => {
             peerConnection.addTrack(track, localStream);
