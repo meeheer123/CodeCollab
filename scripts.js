@@ -236,36 +236,49 @@ function setLanguage(language) {
 // WebRTC functions
 async function initializeWebRTC() {
     try {
+        // Get local media stream (audio and video)
         localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         document.getElementById('local-video').srcObject = localStream;
 
-        // ICE servers configuration with public STUN and TURN servers
-        const iceServers = [
-            { urls: 'stun:stun.l.google.com:19302' }, // Free public STUN server by Google
-            {
-                urls: 'turn:TURN_SERVER_URL', // Replace with your TURN server URL
-                username: 'TURN_SERVER_USERNAME', // Replace with TURN server username
-                credential: 'TURN_SERVER_CREDENTIAL' // Replace with TURN server credential
-            }
-        ];
+        // Fetch ICE server credentials from the TURN server API
+        const response = await fetch(`https://codecollab.metered.live/api/v1/turn/credential?secretKey=${process.env.TURN_SECRET_KEY}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                expiryInSeconds: 3600,   // Token expiration time
+                label: "exampleLabel"
+            }),
+        });
 
+        // Await the response and parse it as JSON
+        const iceServerResponse = await response.json();
+        const iceServers = iceServerResponse.iceServers;
+
+        // Now create the peer connection with the fetched ICE servers
         peerConnection = new RTCPeerConnection({ iceServers });
 
+        // Add local media tracks to the peer connection
         localStream.getTracks().forEach(track => {
             peerConnection.addTrack(track, localStream);
         });
 
+        // Handle incoming remote stream
         peerConnection.ontrack = (event) => {
             document.getElementById('remote-video').srcObject = event.streams[0];
         };
 
+        // Handle ICE candidates
         peerConnection.onicecandidate = (event) => {
             if (event.candidate) {
                 sendWebRTCSignal({ type: 'ice-candidate', candidate: event.candidate });
             }
         };
 
+        // Create and send the WebRTC offer to the other peer
         await createAndSendOffer();
+
     } catch (error) {
         console.error('Error setting up WebRTC:', error);
     }
