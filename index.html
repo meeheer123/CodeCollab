@@ -1,51 +1,52 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>CodeCollab - Collaborative Code Editor with Video Call</title>
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/monaco-editor/min/vs/editor/editor.main.css" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet" />
-        <link rel="stylesheet" href="styles.css" />
-    </head>
-    <body>
-        <div class="header">
-            <div class="logo">CodeCollab</div>
-            <div class="user-info">Connected as: <span id="username"></span></div>
-        </div>
-        <div class="container">
-            <div id="editor"></div>
-            <div class="right-panel">
-                <div id="video-container">
-                    <div id="video-wrapper">
-                        <video id="remote-video" autoplay playsinline></video>
-                        <video id="local-video" autoplay playsinline muted></video>
-                    </div>
-                    <div class="video-controls">
-                        <button id="toggle-audio" class="video-button">🎤</button>
-                        <button id="toggle-video" class="video-button">📹</button>
-                    </div>
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CodeCollab - Collaborative Code Editor with Video Call</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/monaco-editor/min/vs/editor/editor.main.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+    <div class="header">
+        <div class="logo">CodeCollab</div>
+        <div class="user-info">Connected as: <span id="username"></span></div>
+    </div>
+    <div class="container">
+        <div id="editor"></div>
+        <div class="right-panel">
+            <div id="video-container">
+                <div id="video-wrapper">
+                    <video id="remote-video" autoplay playsinline></video>
+                    <video id="local-video" autoplay playsinline muted></video>
                 </div>
-                <div class="output-section">
-                    <div class="control-panel">
-                        <select id="language-select">
-                            <option value="javascript">JavaScript</option>
-                            <option value="python">Python</option>
-                            <option value="java">Java</option>
-                            <option value="cpp">C++</option>
-                        </select>
-                        <button id="run-button">Run Code</button>
-                    </div>
-                    <div class="input-output-container">
-                        <div class="input-header">Custom Input</div>
-                        <textarea id="custom-input" placeholder="Enter custom input here..."></textarea>
-                        <div class="output-header">Output</div>
-                        <div id="output"></div>
-                    </div>
+                <div class="video-controls">
+                    <button id="toggle-audio" class="video-button">🎤</button>
+                    <button id="toggle-video" class="video-button">📹</button>
+                </div>
+            </div>
+            <div class="output-section">
+                <div class="control-panel">
+                    <select id="language-select">
+                        <option value="javascript">JavaScript</option>
+                        <option value="python">Python</option>
+                        <option value="java">Java</option>
+                        <option value="cpp">C++</option>
+                    </select>
+                    <button id="run-button">Run Code</button>
+                </div>
+                <div class="input-output-container">
+                    <div class="input-header">Custom Input</div>
+                    <textarea id="custom-input" placeholder="Enter custom input here..."></textarea>
+                    <div class="output-header">Output</div>
+                    <div id="output"></div>
                 </div>
             </div>
         </div>
-        <script src="https://cdn.jsdelivr.net/npm/monaco-editor/min/vs/loader.js"></script>
-        <script src="scripts.js"></script>
-    </body>
+    </div>
+    <div id="connection-status" class="connection-status"></div>
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor/min/vs/loader.js"></script>
+    <script src="scripts.js"></script>
+</body>
 </html>

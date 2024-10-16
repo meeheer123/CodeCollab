@@ -1,4 +1,3 @@
-
 const username = "user" + Math.floor(Math.random() * 1000);
 document.getElementById("username").textContent = username;
 
@@ -138,7 +137,7 @@ require(["vs/editor/editor.main"], function () {
             cursorDecorations[username] = editor.deltaDecorations([], [{ range, options }]);
         }
 
-        const cursorCoords =   editor.getScrolledVisiblePosition({ lineNumber: position.lineNumber, column: position.column });
+        const cursorCoords = editor.getScrolledVisiblePosition({ lineNumber: position.lineNumber, column: position.column });
 
         if (!cursorCoords) return;
 
@@ -236,7 +235,7 @@ function setLanguage(language) {
 // WebRTC functions
 async function initializeWebRTC() {
     try {
-        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        localStream = await  navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         document.getElementById('local-video').srcObject = localStream;
 
         const configuration = {
@@ -268,16 +267,23 @@ async function initializeWebRTC() {
 
         peerConnection.oniceconnectionstatechange = () => {
             console.log("ICE connection state:", peerConnection.iceConnectionState);
-            if (peerConnection.iceConnectionState === 'failed') {
-                console.error('ICE connection failed. Trying to restart ICE.');
-                peerConnection.restartIce();
+            const statusElement = document.getElementById('connection-status');
+            if (peerConnection.iceConnectionState === 'connected' || peerConnection.iceConnectionState === 'completed') {
+                statusElement.textContent = 'Connected';
+                statusElement.className = 'connection-status connected';
+            } else if (peerConnection.iceConnectionState === 'failed' || peerConnection.iceConnectionState === 'disconnected' || peerConnection.iceConnectionState === 'closed') {
+                statusElement.textContent = 'Disconnected';
+                statusElement.className = 'connection-status disconnected';
+                if (peerConnection.iceConnectionState === 'failed') {
+                    console.error('ICE connection failed. Trying to restart ICE.');
+                    peerConnection.restartIce();
+                }
             }
         };
 
         await createAndSendOffer();
     } catch (error) {
         console.error('Error setting up WebRTC:', error);
-        // Display an error message to the user
         alert('Failed to set up video call. Please check your camera and microphone permissions.');
     }
 }
