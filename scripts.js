@@ -239,7 +239,18 @@ async function initializeWebRTC() {
         localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         document.getElementById('local-video').srcObject = localStream;
 
-        peerConnection = new RTCPeerConnection();
+        const configuration = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                {
+                    urls: 'turn:numb.viagenie.ca',
+                    username: 'webrtc@live.com',
+                    credential: 'muazkh'
+                }
+            ]
+        };
+
+        peerConnection = new RTCPeerConnection(configuration);
 
         localStream.getTracks().forEach(track => {
             peerConnection.addTrack(track, localStream);
@@ -255,9 +266,19 @@ async function initializeWebRTC() {
             }
         };
 
+        peerConnection.oniceconnectionstatechange = () => {
+            console.log("ICE connection state:", peerConnection.iceConnectionState);
+            if (peerConnection.iceConnectionState === 'failed') {
+                console.error('ICE connection failed. Trying to restart ICE.');
+                peerConnection.restartIce();
+            }
+        };
+
         await createAndSendOffer();
     } catch (error) {
         console.error('Error setting up WebRTC:', error);
+        // Display an error message to the user
+        alert('Failed to set up video call. Please check your camera and microphone permissions.');
     }
 }
 
