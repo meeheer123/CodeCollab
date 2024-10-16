@@ -236,30 +236,64 @@ function setLanguage(language) {
 // WebRTC functions
 async function initializeWebRTC() {
     try {
+        // Access local media (video/audio)
         localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         document.getElementById('local-video').srcObject = localStream;
 
-        peerConnection = new RTCPeerConnection();
+        // STUN and TURN servers from Metered
+        const iceServers = [
+            {
+                urls: "stun:stun.relay.metered.ca:80",
+            },
+            {
+                urls: "turn:global.relay.metered.ca:80",
+                username: "b5e0e65604b9deec4008ea3b",
+                credential: "XlV1Qh1U9qzt9fXm",
+            },
+            {
+                urls: "turn:global.relay.metered.ca:80?transport=tcp",
+                username: "b5e0e65604b9deec4008ea3b",
+                credential: "XlV1Qh1U9qzt9fXm",
+            },
+            {
+                urls: "turn:global.relay.metered.ca:443",
+                username: "b5e0e65604b9deec4008ea3b",
+                credential: "XlV1Qh1U9qzt9fXm",
+            },
+            {
+                urls: "turns:global.relay.metered.ca:443?transport=tcp",
+                username: "b5e0e65604b9deec4008ea3b",
+                credential: "XlV1Qh1U9qzt9fXm",
+            }
+        ];
 
+        // Initialize RTCPeerConnection with ICE servers (STUN + TURN)
+        peerConnection = new RTCPeerConnection({ iceServers });
+
+        // Add local stream tracks to the connection
         localStream.getTracks().forEach(track => {
             peerConnection.addTrack(track, localStream);
         });
 
+        // When a remote stream is received, display it
         peerConnection.ontrack = (event) => {
             document.getElementById('remote-video').srcObject = event.streams[0];
         };
 
+        // Handle ICE candidate events and send them to the signaling server
         peerConnection.onicecandidate = (event) => {
             if (event.candidate) {
                 sendWebRTCSignal({ type: 'ice-candidate', candidate: event.candidate });
             }
         };
 
+        // Create and send offer to the remote peer
         await createAndSendOffer();
     } catch (error) {
         console.error('Error setting up WebRTC:', error);
     }
 }
+
 
 async function createAndSendOffer() {
     try {
